@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pesquisa Instantânea</title>
+    <title>QR Code - Instrumentação</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
+        <style>
         body {
             background-color: #f8f9fa;
         }
 
         h1 {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .table {
@@ -22,31 +22,56 @@
             background-color: #343a40;
             color: #fff;
         }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        /* Ajusta o input para 100% no mobile */
+        @media (max-width: 768px) {
+            #searchInput {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="text-center">Pesquisa Instantânea</h1>
-        <div class="form-group">
-            <input type="text" id="searchInput" class="form-control" placeholder="Digite para pesquisar...">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center">ERCP - Pesquisa Instantânea</h1>
+            </div>
         </div>
-        <table class="table table-bordered table-striped mt-3">
-            <thead class="thead-dark">
-                <tr>
-                    <th>Malha</th>
-                    <th>Remota ERCP</th>
-                    <th>Localização</th>
-                    <th>Rede</th>
-                    <th>IBC</th>
-                    <th>Cartão</th>
-                    <th>Canal</th>
-                    <th>Tipo do Cartão</th>
-                </tr>
-            </thead>
-            <tbody id="dataTable">
-                <!-- Os dados serão inseridos aqui -->
-            </tbody>
-        </table>
+        <div class="row">
+            <div class="col-12">
+                <div class="form-group">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Digite para pesquisar...">
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped mt-3">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Malha</th>
+                                <th>Remota ERCP</th>
+                                <th>Localização</th>
+                                <th>Rede</th>
+                                <th>IBC</th>
+                                <th>Cartão</th>
+                                <th>Canal</th>
+                                <th>Tipo do Cartão</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable">
+                            <!-- Os dados serão inseridos aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -83983,23 +84008,68 @@
     }
 ];
 
-        document.addEventListener('DOMContentLoaded', () => {
+      document.addEventListener('DOMContentLoaded', () => {
             const searchInput = document.getElementById('searchInput');
             const dataTable = document.getElementById('dataTable');
 
             function renderTable(data) {
-                dataTable.innerHTML = '';
+                dataTable.innerHTML = ''; // Limpa a tabela antes de renderizar
+
                 data.forEach(item => {
                     const row = document.createElement('tr');
+                    
+                    // Cria uma linha para cada item
                     for (const key in item) {
                         const cell = document.createElement('td');
-                        cell.textContent = item[key];
+                        
+                        // Verifica se a coluna é "Remota ERCP" para aplicar o link
+                        if (key === "Remota ERCP") {
+                            const link = document.createElement('a');
+                            link.textContent = item[key];
+                            link.target = "_blank"; // Abre o link em uma nova aba
+                            
+                            // Adiciona o link correto com base no valor de "Remota ERCP"
+                            switch (item[key]) {
+                                case "1411ERCP1A":
+                                    link.href = "https://drive.google.com/uc?export=download&id=1HNYGkXq31RIX_c3SXLklOCS0QdqYXRgh";
+                                    break;
+                                case "1411ERCP1B":
+                                    link.href = "https://drive.google.com/uc?export=download&id=1kX7s7f6pisKINSp0q3V5kHAFSm3MtKII";
+                                    break;
+                                case "1411ERCP1C":
+                                    link.href = "https://drive.google.com/uc?export=download&id=1_GTfihjQ9S9x9vBh952GdjVO1mN9Y2nA";
+                                    break;
+                                case "1411ERCP1D":
+                                    link.href = "https://drive.google.com/uc?export=download&id=1a8qGxdCTZunuhgx5x2p1YYGU0XMNMVBz";
+                                    break;
+                                case "1411ERCP1E":
+                                    link.href = "https://drive.google.com/uc?export=download&id=1MQh3Un4OOEHh5UzvTpbjhJbU6-gM3m5q";
+                                    break;
+                                case "1411ERCP1F":
+                                    link.href = "https://drive.google.com/uc?export=download&id=189VNhfLWNnhIJvQz2oCzbn_bZpoEIYHo";
+                                    break;
+                                default:
+                                    link.href = "#"; // Caso não corresponda, não faz nada
+                                    break;
+                            }
+
+                            // Adiciona o link à célula
+                            cell.appendChild(link);
+                        } else {
+                            // Para outras colunas, apenas insere o texto
+                            cell.textContent = item[key];
+                        }
+                        
+                        // Adiciona a célula à linha
                         row.appendChild(cell);
                     }
+                    
+                    // Adiciona a linha à tabela
                     dataTable.appendChild(row);
                 });
             }
 
+            // Função para filtrar os dados com base na busca
             function filterData(query) {
                 const lowerQuery = query.toLowerCase();
                 return data.filter(item => {
@@ -84007,19 +84077,22 @@
                 });
             }
 
+            // Função de busca
             function performSearch() {
-                const query = searchInput.value.trim(); // Remove espaços em branco antes e depois
+                const query = searchInput.value.trim(); // Remove espaços em branco
                 if (query === "") {
-                    renderTable(data); // Se a consulta estiver vazia, exiba todos os dados
+                    renderTable(data); // Se a consulta estiver vazia, exibe todos os dados
                 } else {
                     const filteredData = filterData(query);
                     renderTable(filteredData);
                 }
             }
 
+            // Adiciona o evento de input para fazer a busca enquanto digita
             searchInput.addEventListener('input', performSearch);
 
-            renderTable(data); // Renderiza a tabela com todos os dados inicialmente
+            // Renderiza a tabela com todos os dados inicialmente
+            renderTable(data);
         });
     </script>
 </body>
