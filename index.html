@@ -84079,10 +84079,11 @@
 
             // Função de busca
             function performSearch() {
-                const query = searchInput.value.trim(); // Remove espaços em branco
-                if (query === "") {
-                    renderTable(data); // Se a consulta estiver vazia, exibe todos os dados
-                } else {
+               const query = searchInput.value.trim(); // Remove espaços em branco
+    if (query === "") {
+        // Não faz nada se a consulta estiver vazia
+        return;
+    } else {
                     const filteredData = filterData(query);
                     renderTable(filteredData);
                 }
