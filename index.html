@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ERCP - Pesquisa Instantânea</title>
+    <title>QR Code - Instrumentação</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
         <style>
         body {
@@ -84008,93 +84008,103 @@
     }
 ];
 
-      document.addEventListener('DOMContentLoaded', () => {
-            const searchInput = document.getElementById('searchInput');
-            const dataTable = document.getElementById('dataTable');
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    const dataTable = document.getElementById('dataTable');
+    let debounceTimeout = null; // Variável para controlar o debounce
+    const debounceDelay = 300; // Tempo de atraso em milissegundos
 
-            function renderTable(data) {
-                dataTable.innerHTML = ''; // Limpa a tabela antes de renderizar
+    // Mapeamento de códigos para URLs
+    const urlMap = {
+        "1411ERCP1A": "https://drive.google.com/uc?export=download&id=1HNYGkXq31RIX_c3SXLklOCS0QdqYXRgh",
+        "1411ERCP1B": "https://drive.google.com/uc?export=download&id=1kX7s7f6pisKINSp0q3V5kHAFSm3MtKII",
+        "1411ERCP1C": "https://drive.google.com/uc?export=download&id=1_GTfihjQ9S9x9vBh952GdjVO1mN9Y2nA",
+        "1411ERCP1D": "https://drive.google.com/uc?export=download&id=1a8qGxdCTZunuhgx5x2p1YYGU0XMNMVBz",
+        "1411ERCP1E": "https://drive.google.com/uc?export=download&id=1MQh3Un4OOEHh5UzvTpbjhJbU6-gM3m5q",
+        "1411ERCP1F": "https://drive.google.com/uc?export=download&id=189VNhfLWNnhIJvQz2oCzbn_bZpoEIYHo"
+    };
 
-                data.forEach(item => {
-                    const row = document.createElement('tr');
-                    
-                    // Cria uma linha para cada item
-                    for (const key in item) {
-                        const cell = document.createElement('td');
-                        
-                        // Verifica se a coluna é "Remota ERCP" para aplicar o link
-                        if (key === "Remota ERCP") {
-                            const link = document.createElement('a');
-                            link.textContent = item[key];
-                            link.target = "_blank"; // Abre o link em uma nova aba
-                            
-                            // Adiciona o link correto com base no valor de "Remota ERCP"
-                            switch (item[key]) {
-                                case "1411ERCP1A":
-                                    link.href = "https://drive.google.com/uc?export=download&id=1HNYGkXq31RIX_c3SXLklOCS0QdqYXRgh";
-                                    break;
-                                case "1411ERCP1B":
-                                    link.href = "https://drive.google.com/uc?export=download&id=1kX7s7f6pisKINSp0q3V5kHAFSm3MtKII";
-                                    break;
-                                case "1411ERCP1C":
-                                    link.href = "https://drive.google.com/uc?export=download&id=1_GTfihjQ9S9x9vBh952GdjVO1mN9Y2nA";
-                                    break;
-                                case "1411ERCP1D":
-                                    link.href = "https://drive.google.com/uc?export=download&id=1a8qGxdCTZunuhgx5x2p1YYGU0XMNMVBz";
-                                    break;
-                                case "1411ERCP1E":
-                                    link.href = "https://drive.google.com/uc?export=download&id=1MQh3Un4OOEHh5UzvTpbjhJbU6-gM3m5q";
-                                    break;
-                                case "1411ERCP1F":
-                                    link.href = "https://drive.google.com/uc?export=download&id=189VNhfLWNnhIJvQz2oCzbn_bZpoEIYHo";
-                                    break;
-                                default:
-                                    link.href = "#"; // Caso não corresponda, não faz nada
-                                    break;
-                            }
+    // Função para exibir mensagem inicial
+    function showInitialMessage() {
+        dataTable.innerHTML = '<tr><td colspan="5">Digite pelo menos 4 caracteres para iniciar a busca.</td></tr>';
+    }
 
-                            // Adiciona o link à célula
-                            cell.appendChild(link);
-                        } else {
-                            // Para outras colunas, apenas insere o texto
-                            cell.textContent = item[key];
-                        }
-                        
-                        // Adiciona a célula à linha
-                        row.appendChild(cell);
-                    }
-                    
-                    // Adiciona a linha à tabela
-                    dataTable.appendChild(row);
-                });
-            }
+    function renderTable(data) {
+        dataTable.innerHTML = ''; // Limpa a tabela antes de renderizar
 
-            // Função para filtrar os dados com base na busca
-            function filterData(query) {
-                const lowerQuery = query.toLowerCase();
-                return data.filter(item => {
-                    return Object.values(item).some(value => value.toLowerCase().includes(lowerQuery));
-                });
-            }
+        if (data.length === 0) {
+            const emptyRow = document.createElement('tr');
+            const emptyCell = document.createElement('td');
+            emptyCell.colSpan = 5; // Supondo que a tabela tenha 5 colunas
+            emptyCell.textContent = 'Nenhum resultado encontrado';
+            emptyRow.appendChild(emptyCell);
+            dataTable.appendChild(emptyRow);
+            return;
+        }
 
-            // Função de busca
-            function performSearch() {
-               const query = searchInput.value.trim(); // Remove espaços em branco
-                if (query === "") {
-                dataTable.innerHTML = '';
-                    return;
+        data.forEach(item => {
+            const row = document.createElement('tr');
+
+            // Cria uma linha para cada item
+            for (const key in item) {
+                const cell = document.createElement('td');
+                const cellValue = item[key];
+
+                // Verifica se o valor da célula está no mapeamento de URLs
+                if (urlMap[cellValue]) {
+                    const link = document.createElement('a');
+                    link.textContent = cellValue;
+                    link.href = urlMap[cellValue];
+                    link.target = "_blank"; // Abre o link em uma nova aba
+                    cell.appendChild(link); // Adiciona o link à célula
                 } else {
-                    const filteredData = filterData(query);
-                    renderTable(filteredData);
+                    // Caso contrário, apenas insere o texto
+                    cell.textContent = cellValue;
                 }
+
+                // Adiciona a célula à linha
+                row.appendChild(cell);
             }
 
-            // Adiciona o evento de input para fazer a busca enquanto digita
-            searchInput.addEventListener('input', performSearch);
-
-            // Renderiza a tabela com todos os dados inicialmente
-            renderTable(data);
+            // Adiciona a linha à tabela
+            dataTable.appendChild(row);
         });
+    }
+
+    // Função para filtrar os dados com base na busca
+    function filterData(query) {
+        const lowerQuery = query.toLowerCase();
+        return data.filter(item => {
+            return Object.values(item).some(value => value.toLowerCase().includes(lowerQuery));
+        });
+    }
+
+    // Função de busca com debounce
+    function performSearch() {
+        const query = searchInput.value.trim(); // Remove espaços em branco
+        
+        if (query.length < 4) {
+            showInitialMessage(); // Mostra a mensagem se houver menos de 4 caracteres
+            return;
+        }
+
+        const filteredData = filterData(query);
+        renderTable(filteredData);
+    }
+
+    // Adiciona o evento de input com debounce para otimizar a busca
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimeout); // Limpa o timeout anterior
+        debounceTimeout = setTimeout(performSearch, debounceDelay); // Define um novo timeout
+    });
+
+    // Exibe a mensagem inicial ao carregar a página
+    showInitialMessage();
+});
+
+
+
+
     </script>
 </body>
 </html>
