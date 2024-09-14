@@ -84080,10 +84080,10 @@
             // Função de busca
             function performSearch() {
                const query = searchInput.value.trim(); // Remove espaços em branco
-    if (query === "") {
-        // Não faz nada se a consulta estiver vazia
-        return;
-    } else {
+                if (query === "") {
+                dataTable.innerHTML = '';
+                    return;
+                } else {
                     const filteredData = filterData(query);
                     renderTable(filteredData);
                 }
