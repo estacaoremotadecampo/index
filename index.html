@@ -84008,7 +84008,7 @@
     }
 ];
 
-document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');
     const dataTable = document.getElementById('dataTable');
     let debounceTimeout = null; // Variável para controlar o debounce
@@ -84026,18 +84026,42 @@ document.addEventListener('DOMContentLoaded', () => {
         "1413ERCP1B": "https://drive.google.com/uc?export=download&id=1Mlvu9iG4LXEqBUkK1MmGGHiGsKnzPqPD"
     };
 
+    // Mapeamento de "Remota ERCP" para localização
+    const localizacoesMap = {
+        "1412ERCP1F": "Décimo sexto piso",
+        "1412ERCP1E": "Décimo sexto piso",
+        "1412ERCP3H": "Décimo quinto piso",
+        "1412ERCP3G": "Décimo quarto piso",
+        "1412ERCP3F": "Décimo primeiro piso",
+        "1412ERCP3E": "Nono piso",
+        "1412ERCP3D": "Sexto piso",
+        "1412ERCP2D": "Quinto piso",
+        "1412ERCP2E": "Entre o quinto e sexto piso",
+        "1412ERCP2C": "Quinto piso",
+        "1412ERCP1D": "Quarto Piso",
+        "1412ERCP1B": "Terceiro piso",
+        "1412ERCP1C": "Terceiro piso",
+        "1411ERCP1A": "Passarela, onde o acesso é pela escada próximo do tanque de metanol",
+        "1411ERCP1B": "Passarela, onde o acesso é pela escada próximo do tanque de metanol",
+        "1411ERCP1C": "Passarela, onde o acesso é pela escada próximo do tanque de metanol",
+        "1411ERCP1D": "Passarela, onde o acesso é pela escada próximo do tanque de metanol",
+        "1411ERCP1E": "Passarela, onde o acesso é pela escada próximo do tanque de metanol",
+        "1411ERCP1F": "Passarela, onde o acesso é pela escada próximo do tanque de metanol"
+    };
+
     // Função para exibir mensagem inicial
     function showInitialMessage() {
         dataTable.innerHTML = '<tr><td colspan="12">Digite pelo menos 4 caracteres para iniciar a busca.</td></tr>';
     }
 
+    // Renderiza a tabela com dados filtrados
     function renderTable(data) {
-        dataTable.innerHTML = ''; // Limpa a tabela antes de renderizar
+        dataTable.innerHTML = '';
 
         if (data.length === 0) {
             const emptyRow = document.createElement('tr');
             const emptyCell = document.createElement('td');
-            emptyCell.colSpan = 5; // Supondo que a tabela tenha 5 colunas
+            emptyCell.colSpan = 12;
             emptyCell.textContent = 'Nenhum resultado encontrado';
             emptyRow.appendChild(emptyCell);
             dataTable.appendChild(emptyRow);
@@ -84047,61 +84071,66 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(item => {
             const row = document.createElement('tr');
 
-            // Cria uma linha para cada item
+            // Se "Localização" estiver vazia, tenta preenchê-la com base em "Remota  ERCP"
+            let remota = item["Remota  ERCP"]?.trim();
+            if (item["Localização"] === "" && remota) {
+                item["Localização"] = localizacoesMap[remota] || "Localização não encontrada";
+            }
+
+            // Cria as células da linha
             for (const key in item) {
                 const cell = document.createElement('td');
-                const cellValue = item[key];
+                const value = item[key];
 
-                // Verifica se o valor da célula está no mapeamento de URLs
-                if (urlMap[cellValue]) {
+                // Se o valor tiver uma URL mapeada, cria link
+                if (urlMap[value]) {
                     const link = document.createElement('a');
-                    link.textContent = cellValue;
-                    link.href = urlMap[cellValue];
-                    link.target = "_blank"; // Abre o link em uma nova aba
-                    cell.appendChild(link); // Adiciona o link à célula
+                    link.href = urlMap[value];
+                    link.textContent = value;
+                    link.target = "_blank";
+                    cell.appendChild(link);
                 } else {
-                    // Caso contrário, apenas insere o texto
-                    cell.textContent = cellValue;
+                    cell.textContent = value;
                 }
 
-                // Adiciona a célula à linha
                 row.appendChild(cell);
             }
 
-            // Adiciona a linha à tabela
             dataTable.appendChild(row);
         });
     }
 
-    // Função para filtrar os dados com base na busca
+    // Filtro de busca
     function filterData(query) {
         const lowerQuery = query.toLowerCase();
-        return data.filter(item => {
-            return Object.values(item).some(value => value.toLowerCase().includes(lowerQuery));
-        });
+        return data.filter(item =>
+            Object.values(item).some(value =>
+                value.toLowerCase().includes(lowerQuery)
+            )
+        );
     }
 
-    // Função de busca com debounce
+    // Busca com debounce
     function performSearch() {
-        const query = searchInput.value.trim(); // Remove espaços em branco
-        
+        const query = searchInput.value.trim();
         if (query.length < 4) {
-            showInitialMessage(); // Mostra a mensagem se houver menos de 4 caracteres
+            showInitialMessage();
             return;
         }
-
         const filteredData = filterData(query);
         renderTable(filteredData);
     }
 
-    // Adiciona o evento de input com debounce para otimizar a busca
+    // Evento input com debounce
     searchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimeout); // Limpa o timeout anterior
-        debounceTimeout = setTimeout(performSearch, debounceDelay); // Define um novo timeout
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(performSearch, debounceDelay);
     });
 
-    // Exibe a mensagem inicial ao carregar a página
+    // Exibe mensagem inicial ao carregar
     showInitialMessage();
+
+
 });
 
 
