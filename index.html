@@ -35,9 +35,15 @@
 /* Modal detalhes */
 #modalDetails li { font-size:0.95rem; }
 
-/* Loading interativo */
-#loadingMessage { font-size: 1.1rem; font-weight:500; display:flex; flex-direction:column; align-items:center; justify-content:center; height:200px; }
-#loadingMessage .spinner-border { width:3rem; height:3rem; margin-bottom:10px; }
+/* Loading Modal Transparente */
+#loadingModal .modal-content {
+  background: rgba(0,0,0,0.4);
+  border: none;
+  box-shadow: none;
+  text-align: center;
+}
+#loadingModal .spinner-border { width:3rem; height:3rem; color: #fff; }
+#loadingModal .modal-body { color: #fff; font-weight:500; font-size:1.2rem; }
 </style>
 </head>
 <body class="p-4">
@@ -68,12 +74,7 @@
     <input id="searchInput" class="form-control" placeholder="Digite pelo menos 4 caracteres..." disabled>
     <button id="btnFiltro" class="btn btn-outline-primary d-none">Filtro</button>
   </div>
-  <div id="cardsContainer" class="row">
-    <div class="col-12 text-center" id="loadingMessage">
-      <div class="spinner-border text-primary" role="status"></div>
-      <span id="loadingText">Carregando dados...</span>
-    </div>
-  </div>
+  <div id="cardsContainer" class="row"></div>
 </div>
 
 <!-- Modal Info -->
@@ -116,6 +117,18 @@
   </div>
 </div>
 
+<!-- Modal Loading Transparente -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body">
+        <div class="spinner-border" role="status"></div>
+        <div id="loadingText">Carregando dados...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -124,8 +137,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const searchInput = document.getElementById('searchInput');
   const cardsContainer = document.getElementById('cardsContainer');
-  const loadingMessage = document.getElementById('loadingMessage');
-  const loadingText = document.getElementById('loadingText');
   const btnFiltro = document.getElementById('btnFiltro');
   const navbar = document.querySelector('.navbar');
   const links = document.querySelectorAll('.navbar-nav .nav-link');
@@ -134,30 +145,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const infoModalLabel = document.getElementById('infoModalLabel');
   const downloadBtn = document.getElementById('downloadBtn');
   const filtroTagsContainer = document.getElementById('filtroTagsContainer');
+  const loadingModalEl = document.getElementById('loadingModal');
+  const loadingModal = new bootstrap.Modal(loadingModalEl);
 
   let dadosCache = { instrumentacao: null, eletrica: null };
   let disciplinaAtual = "instrumentacao";
   let filtrosSelecionados = [];
-  let loadingInterval = null;
 
-  const loadingMensagens = ["Carregando dados...", "Aguarde um momento...", "Quase lá..."];
   const sheetUrls = {
     instrumentacao: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
     eletrica: "URL_PLANILHA_ELETRICA"
   };
-
-  function startLoadingAnim() {
-    let idx = 0;
-    loadingInterval = setInterval(() => {
-      loadingText.textContent = loadingMensagens[idx];
-      idx = (idx + 1) % loadingMensagens.length;
-    }, 1200);
-  }
-
-  function stopLoadingAnim() {
-    clearInterval(loadingInterval);
-    loadingInterval = null;
-  }
 
   function showModal(item){
     infoModalLabel.textContent = `${item['Malha']}`;
@@ -213,19 +211,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
       return;
     }
-    if(disciplinaAtual==='eletrica' && q.length===0 && filtrosSelecionados.length===0){
-      cardsContainer.innerHTML='';
-      return;
-    }
     renderCards(filterData(q));
   }
 
   async function loadData(disciplina){
-    loadingMessage.style.display='flex';
-    startLoadingAnim();
     searchInput.disabled=true;
     btnFiltro.classList.add('d-none');
     cardsContainer.innerHTML='';
+    loadingModal.show();
 
     if(disciplina==='instrumentacao'){
       navbar.style.backgroundColor='#fff';
@@ -238,33 +231,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnFiltro.classList.remove('d-none');
     }
 
-    // Força renderizar o loading
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve=>requestAnimationFrame(resolve));
 
     if(dadosCache[disciplina]){
-      stopLoadingAnim();
-      loadingMessage.style.display='none';
+      loadingModal.hide();
       searchInput.disabled=false;
       onSearch();
       return;
     }
 
-    try {
+    try{
       const proxyUrl="https://api.allorigins.win/raw?url="+encodeURIComponent(sheetUrls[disciplina]);
       const res=await fetch(proxyUrl);
+      if(!res.ok) throw new Error('Erro HTTP '+res.status);
       const text=await res.text();
-      dadosCache[disciplina]=Papa.parse(text,{header:true,skipEmptyLines:true}).data;
-      stopLoadingAnim();
-      loadingMessage.style.display='none';
+
+      dadosCache[disciplina]=await new Promise((resolve,reject)=>{
+        Papa.parse(text,{
+          header:true,
+          skipEmptyLines:true,
+          complete:(results)=>resolve(results.data),
+          error:(err)=>reject(err)
+        });
+      });
+
+      loadingModal.hide();
       searchInput.disabled=false;
       onSearch();
-    } catch(err){
+
+    }catch(err){
       console.error(err);
-      loadingText.textContent='Erro ao carregar dados. Verifique conexão ou planilha.';
-      stopLoadingAnim();
+      loadingModal.hide();
+      alert("Erro ao carregar dados. Verifique a conexão ou planilha.");
     }
   }
 
+  // Eventos
   searchInput.addEventListener('input', onSearch);
 
   document.querySelectorAll(".disciplina-link").forEach(link=>{
