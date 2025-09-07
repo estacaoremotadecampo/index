@@ -15,6 +15,11 @@
 .navbar-nav .nav-link { margin-left: 1.5rem; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: color 0.3s; }
 .navbar-nav .nav-item.active .nav-link { font-weight: 700; }
 
+/* Sobrescrever o navbar-toggler-icon para fundo branco em navbar escura */
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba%28255,255,255,1%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+}
+
 /* Conteúdo */
 .content { margin-top: 100px; text-align: center; }
 .search-box { max-width: 600px; margin: 0 auto 20px auto; display:flex; gap:10px; }
@@ -234,10 +239,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(disciplina==='instrumentacao'){
       navbar.style.backgroundColor='#fff';
+      navbar.classList.remove('navbar-dark');
       logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
       links.forEach(l=>l.style.color='#009739');
     } else {
       navbar.style.backgroundColor='#003057';
+      navbar.classList.add('navbar-dark');
       logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
       links.forEach(l=>l.style.color='#fff');
       btnFiltro.classList.remove('d-none');
