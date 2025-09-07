@@ -141,7 +141,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let loadingInterval = null;
 
   const loadingMensagens = ["Carregando dados...", "Aguarde um momento...", "Quase lá..."];
-
   const sheetUrls = {
     instrumentacao: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
     eletrica: "URL_PLANILHA_ELETRICA"
@@ -179,15 +178,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function createCard(item){
-    const col=document.createElement('div'); col.className='col-md-4 mb-3';
-    const card=document.createElement('div'); card.className='card card-item p-2';
+    const col=document.createElement('div');
+    col.className='col-md-4 mb-3';
+    const card=document.createElement('div');
+    card.className='card card-item p-2';
     card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
-    card.addEventListener("click",()=>showModal(item)); col.appendChild(card); return col;
+    card.addEventListener("click",()=>showModal(item));
+    col.appendChild(card);
+    return col;
   }
 
   function renderCards(arr){
     cardsContainer.innerHTML='';
-    if(!arr.length){ cardsContainer.innerHTML='<div class="col-12 text-center">Nenhum resultado encontrado.</div>'; return; }
+    if(!arr.length){
+      cardsContainer.innerHTML='<div class="col-12 text-center">Nenhum resultado encontrado.</div>';
+      return;
+    }
     arr.forEach(i=>cardsContainer.appendChild(createCard(i)));
   }
 
@@ -203,32 +209,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function onSearch(){
     const q=searchInput.value.trim();
-    if(disciplinaAtual==='instrumentacao' && q.length<4){ cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>'; return; }
-    if(disciplinaAtual==='eletrica' && q.length===0 && filtrosSelecionados.length===0){ cardsContainer.innerHTML=''; return; }
+    if(disciplinaAtual==='instrumentacao' && q.length<4){
+      cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
+      return;
+    }
+    if(disciplinaAtual==='eletrica' && q.length===0 && filtrosSelecionados.length===0){
+      cardsContainer.innerHTML='';
+      return;
+    }
     renderCards(filterData(q));
   }
 
   async function loadData(disciplina){
     loadingMessage.style.display='flex';
     startLoadingAnim();
-    searchInput.disabled=true; btnFiltro.classList.add('d-none'); cardsContainer.innerHTML='';
+    searchInput.disabled=true;
+    btnFiltro.classList.add('d-none');
+    cardsContainer.innerHTML='';
+
     if(disciplina==='instrumentacao'){
-      navbar.style.backgroundColor='#fff'; logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp"; links.forEach(l=>l.style.color='#009739');
+      navbar.style.backgroundColor='#fff';
+      logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
+      links.forEach(l=>l.style.color='#009739');
     } else {
-      navbar.style.backgroundColor='#003057'; logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png"; links.forEach(l=>l.style.color='#fff'); btnFiltro.classList.remove('d-none');
+      navbar.style.backgroundColor='#003057';
+      logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
+      links.forEach(l=>l.style.color='#fff');
+      btnFiltro.classList.remove('d-none');
     }
 
-    if(dadosCache[disciplina]){ stopLoadingAnim(); loadingMessage.style.display='none'; searchInput.disabled=false; onSearch(); return; }
+    // Força renderizar o loading
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    if(dadosCache[disciplina]){
+      stopLoadingAnim();
+      loadingMessage.style.display='none';
+      searchInput.disabled=false;
+      onSearch();
+      return;
+    }
 
     try {
       const proxyUrl="https://api.allorigins.win/raw?url="+encodeURIComponent(sheetUrls[disciplina]);
       const res=await fetch(proxyUrl);
-      if(!res.ok) throw new Error('Erro HTTP '+res.status);
       const text=await res.text();
       dadosCache[disciplina]=Papa.parse(text,{header:true,skipEmptyLines:true}).data;
-      stopLoadingAnim(); loadingMessage.style.display='none'; searchInput.disabled=false;
+      stopLoadingAnim();
+      loadingMessage.style.display='none';
+      searchInput.disabled=false;
       onSearch();
     } catch(err){
       console.error(err);
@@ -237,12 +265,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Eventos
   searchInput.addEventListener('input', onSearch);
 
   document.querySelectorAll(".disciplina-link").forEach(link=>{
     link.addEventListener("click", async e=>{
-      e.preventDefault(); disciplinaAtual=e.target.dataset.disciplina; filtrosSelecionados=[];
+      e.preventDefault();
+      disciplinaAtual=e.target.dataset.disciplina;
+      filtrosSelecionados=[];
       document.querySelectorAll(".disciplina-link").forEach(l=>l.parentElement.classList.remove("active"));
       e.target.parentElement.classList.add("active");
       await loadData(disciplinaAtual);
@@ -251,14 +280,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   btnFiltro.addEventListener("click", ()=>new bootstrap.Modal(document.getElementById('filtroModal')).show());
 
-  // Tags filtro
   filtroTagsContainer.querySelectorAll('.tag-filtro').forEach(tag=>{
     tag.addEventListener('click',()=>{ tag.classList.toggle('selected'); });
   });
 
   document.getElementById('aplicarFiltro').addEventListener('click', ()=>{
     filtrosSelecionados = Array.from(filtroTagsContainer.querySelectorAll('.tag-filtro.selected')).map(t=>t.dataset.value);
-    onSearch(); bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide();
+    onSearch();
+    bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide();
   });
 
   await loadData(disciplinaAtual);
