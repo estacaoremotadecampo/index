@@ -1,167 +1,317 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ERCP - Pesquisa Instantânea</title>
 
-<!-- Favicon -->
-<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/estacaoremotadecampo/index/refs/heads/main/gwregister.png">
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  .card-item { cursor: pointer; transition: transform 0.2s; }
-  .card-item:hover { transform: scale(1.02); }
-  .logo-header { max-height: 80px; margin-bottom: 20px; display: block; margin-left:auto; margin-right:auto; }
+/* Navbar */
+.navbar { padding: 0.8rem 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: background-color 0.3s; }
+.navbar-brand img { height: 42px; }
+.navbar-nav .nav-link { margin-left: 1.5rem; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: color 0.3s; }
+.navbar-nav .nav-item.active .nav-link { font-weight: 700; }
+
+/* Conteúdo */
+.content { margin-top: 100px; text-align: center; }
+.search-box { max-width: 600px; margin: 0 auto 20px auto; display:flex; gap:10px; }
+.search-box input { flex:1; border: 2px solid #009739; border-radius: 8px; padding: 10px 15px; }
+
+/* Cards */
+.card-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.card-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+/* Filtro elétrico tags */
+.tag-filtro { display:inline-block; margin:4px; padding:6px 14px; border-radius:20px; border:1px solid #003057; cursor:pointer; transition: all 0.2s; font-size:0.9rem; user-select:none; }
+.tag-filtro:hover { background:#e6f0ff; }
+.tag-filtro.selected { background:#003057; color:#fff; font-weight:600; }
+
+/* Modal body */
+.modal-body { max-height:350px; overflow-y:auto; text-align:center; }
+
+/* Modal detalhes */
+#modalDetails li { font-size:0.95rem; }
+
+/* Loading popup */
+#loadingOverlay {
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.5);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:1055;
+  display:none;
+  flex-direction: column;
+}
+#loadingOverlay .spinner-border { width:3rem; height:3rem; margin-bottom:10px; color: #00ff00; }
+#loadingOverlay #loadingText { font-size:1.2rem; font-weight:600; color:#fff; text-align:center; }
 </style>
 </head>
 <body class="p-4">
 
-<img src="https://raw.githubusercontent.com/estacaoremotadecampo/index/refs/heads/main/gwregister.png" alt="Logo" class="logo-header">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand d-flex align-items-center" href="#">
+      <img id="navbarLogo" src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp" alt="Logo">
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item active"><a class="nav-link disciplina-link" href="#" data-disciplina="instrumentacao">Instrumentação</a></li>
+        <li class="nav-item"><a class="nav-link disciplina-link" href="#" data-disciplina="eletrica">Elétrica</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
 
-<h1 class="text-center mb-4">ERCP - Pesquisa Instantânea</h1>
-<input id="searchInput" class="form-control mb-3" placeholder="Digite pelo menos 4 caracteres..." disabled>
-
-<div id="cardsContainer" class="row">
-  <div class="col-12 text-center" id="loadingMessage">Carregando dados...</div>
+<!-- Conteúdo -->
+<div class="content container">
+  <img src="https://raw.githubusercontent.com/estacaoremotadecampo/index/refs/heads/main/gwregister.png" alt="Logo" class="logo-header">
+  <h1>ERCP - Pesquisa Instantânea</h1>
+  <div class="search-box">
+    <input id="searchInput" class="form-control" placeholder="Digite pelo menos 4 caracteres..." disabled>
+    <button id="btnFiltro" class="btn btn-outline-primary d-none">Filtro</button>
+  </div>
+  <div id="cardsContainer" class="row"></div>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="infoModal" tabindex="-1" role="dialog" aria-labelledby="infoModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+<!-- Modal Info -->
+<div class="modal fade" id="infoModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="infoModalLabel">Detalhes da Malha</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-          <span aria-hidden="true">&times;</span>
-        </button>
+        <h5 class="modal-title" id="infoModalLabel">Detalhes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <ul class="list-group" id="modalDetails"></ul>
-      </div>
+      <div class="modal-body"><ul class="list-group" id="modalDetails"></ul></div>
       <div class="modal-footer">
-        <a id="downloadBtn" href="#" target="_blank" class="btn btn-primary">Download Desenho</a>
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+        <a id="downloadBtn" href="#" target="_blank" class="btn btn-success">Download</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
       </div>
     </div>
   </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Modal Filtro -->
+<div class="modal fade" id="filtroModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Filtrar por área</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="filtroTagsContainer">
+        <span class="tag-filtro" data-value="Caldeira de Recuperação">Caldeira de Recuperação</span>
+        <span class="tag-filtro" data-value="ETAC">ETAC</span>
+        <span class="tag-filtro" data-value="Central elétrica">Central elétrica</span>
+        <span class="tag-filtro" data-value="ETA">ETA</span>
+        <span class="tag-filtro" data-value="ETE">ETE</span>
+        <span class="tag-filtro" data-value="CAE">CAE</span>
+      </div>
+      <div class="modal-footer">
+        <button id="aplicarFiltro" class="btn btn-primary">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="spinner-border" role="status"></div>
+  <span id="loadingText">Carregando dados...</span>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
-
   const searchInput = document.getElementById('searchInput');
   const cardsContainer = document.getElementById('cardsContainer');
-  const loadingMessage = document.getElementById('loadingMessage');
+  const btnFiltro = document.getElementById('btnFiltro');
+  const navbar = document.querySelector('.navbar');
+  const links = document.querySelectorAll('.navbar-nav .nav-link');
+  const logo = document.getElementById('navbarLogo');
   const modalDetails = document.getElementById('modalDetails');
   const infoModalLabel = document.getElementById('infoModalLabel');
   const downloadBtn = document.getElementById('downloadBtn');
+  const filtroTagsContainer = document.getElementById('filtroTagsContainer');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
 
-  let data = [];
-  let debounceTimeout = null;
-  const debounceDelay = 300;
+  let dadosCache = { instrumentacao: null, eletrica: null };
+  let disciplinaAtual = "instrumentacao";
+  let filtrosSelecionados = [];
+  let loadingInterval = null;
 
-  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv";
-  const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(sheetUrl);
+  const loadingMensagens = ["Carregando dados...", "Aguarde um momento...", "Quase lá..."];
 
-  function createCard(item) {
-    const col = document.createElement('div');
-    col.className = 'col-md-4 mb-3';
-    const card = document.createElement('div');
-    card.className = 'card card-item p-2';
-    card.innerHTML = `
-      <h5 class="card-title">${item['Malha']}</h5>
-      <p class="card-text">
-        <strong>Remota:</strong> ${item['Remota - ERCP']}<br>
-        <strong>Localização:</strong> ${item['Localização'] || 'Não informada'}
-      </p>
-    `;
-    card.addEventListener('click', () => showModal(item));
+  const sheetUrls = {
+    instrumentacao: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
+    eletrica: "URL_PLANILHA_ELETRICA"
+  };
+
+  function startLoadingAnim(){
+    let idx=0;
+    loadingInterval = setInterval(()=>{
+      loadingText.textContent = loadingMensagens[idx];
+      idx=(idx+1)%loadingMensagens.length;
+    }, 1200);
+  }
+
+  function stopLoadingAnim(){
+    clearInterval(loadingInterval);
+    loadingInterval=null;
+  }
+
+  function showLoading(show){
+    loadingOverlay.style.display = show?'flex':'none';
+    if(show) startLoadingAnim();
+    else stopLoadingAnim();
+  }
+
+  function showModal(item){
+    infoModalLabel.textContent = `${item['Malha']}`;
+    modalDetails.innerHTML='';
+    ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'].forEach(k=>{
+      if(item[k]){
+        const li=document.createElement('li');
+        li.className='list-group-item';
+        li.innerHTML=`<strong>${k}:</strong> ${item[k]}`;
+        modalDetails.appendChild(li);
+      }
+    });
+    const obsLink=item['Observação']?.trim();
+    if(obsLink && obsLink.startsWith('http')){
+      downloadBtn.href=obsLink; downloadBtn.style.display='inline-block';
+    } else { downloadBtn.href='#'; downloadBtn.style.display='none'; }
+    new bootstrap.Modal(document.getElementById('infoModal')).show();
+  }
+
+  function createCard(item){
+    const col=document.createElement('div');
+    col.className='col-md-4 mb-3';
+    const card=document.createElement('div');
+    card.className='card card-item p-2';
+    card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
+    card.addEventListener("click",()=>showModal(item));
     col.appendChild(card);
     return col;
   }
 
-  function showModal(item) {
-    infoModalLabel.textContent = `Malha: ${item['Malha']}`;
-    modalDetails.innerHTML = '';
-
-    const fieldsToShow = ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'];
-    fieldsToShow.forEach(key => {
-      const li = document.createElement('li');
-      li.className = 'list-group-item';
-      li.innerHTML = `<strong>${key}:</strong> ${item[key] || ''}`;
-      modalDetails.appendChild(li);
-    });
-
-    const obsLink = item['Observação']?.trim();
-    if(obsLink && obsLink.startsWith('http')) {
-      downloadBtn.href = obsLink;
-      downloadBtn.style.display = 'inline-block';
-    } else {
-      downloadBtn.href = '#';
-      downloadBtn.style.display = 'none';
-    }
-
-    $('#infoModal').modal('show');
-  }
-
-  function renderCards(arr) {
-    cardsContainer.innerHTML = '';
-    if(!arr.length) {
-      cardsContainer.innerHTML = '<div class="col-12 text-center">Nenhum resultado encontrado.</div>';
+  function renderCards(arr){
+    cardsContainer.innerHTML='';
+    if(!arr.length){
+      cardsContainer.innerHTML='<div class="col-12 text-center">Nenhum resultado encontrado.</div>';
       return;
     }
-    arr.forEach(item => {
-      cardsContainer.appendChild(createCard(item));
+    arr.forEach(i=>cardsContainer.appendChild(createCard(i)));
+  }
+
+  function filterData(q){
+    const lq=q.toLowerCase();
+    const data=dadosCache[disciplinaAtual]||[];
+    return data.filter(item=>{
+      const matchTexto=!q||item['Malha']?.toLowerCase().includes(lq)||item['Remota - ERCP']?.toLowerCase().includes(lq)||(item['Localização']||'').toLowerCase().includes(lq);
+      const matchFiltro=disciplinaAtual!=='eletrica'||filtrosSelecionados.length===0||filtrosSelecionados.some(f=>(item['Localização']||'').includes(f));
+      return matchTexto&&matchFiltro;
     });
   }
 
-  function filterData(q) {
-    const lq = q.toLowerCase();
-    return data.filter(item =>
-      item['Malha'].toLowerCase().includes(lq) ||
-      item['Remota - ERCP'].toLowerCase().includes(lq) ||
-      (item['Localização']?.toLowerCase().includes(lq))
-    );
-  }
-
-  function onSearch() {
-    const q = searchInput.value.trim();
-    if(q.length < 4) {
-      cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 4 caracteres para pesquisar.</div>';
+  function onSearch(){
+    const q=searchInput.value.trim();
+    if(disciplinaAtual==='instrumentacao' && q.length<4){
+      cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
       return;
     }
     renderCards(filterData(q));
   }
 
-  async function loadData() {
-    try {
-      const res = await fetch(proxyUrl);
-      const text = await res.text();
-      // Usando PapaParse para tratar corretamente campos com vírgula
-      const parsed = Papa.parse(text, {header:true, skipEmptyLines:true});
-      data = parsed.data;
-      loadingMessage.style.display = 'none';
-      searchInput.disabled = false;
-    } catch(e) {
-      cardsContainer.innerHTML = '<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
-      console.error(e);
+  async function loadData(disciplina){
+    showLoading(true);
+    searchInput.disabled=true;
+    btnFiltro.classList.add('d-none');
+
+    if(disciplina==='instrumentacao'){
+      navbar.style.backgroundColor='#fff';
+      logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
+      links.forEach(l=>l.style.color='#009739');
+    } else {
+      navbar.style.backgroundColor='#003057';
+      logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
+      links.forEach(l=>l.style.color='#fff');
+      btnFiltro.classList.remove('d-none');
+    }
+
+    // Cache diário
+    const cacheKey = `dados_${disciplina}`;
+    const cacheTimeKey = `dados_${disciplina}_time`;
+    const now = new Date().getTime();
+    const oneDay = 24*60*60*1000;
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(cacheTimeKey);
+
+    if(cachedData && cachedTime && now - cachedTime < oneDay){
+      dadosCache[disciplina] = JSON.parse(cachedData);
+      showLoading(false);
+      searchInput.disabled=false;
+      onSearch();
+      return;
+    }
+
+    try{
+      const proxyUrl="https://api.allorigins.win/raw?url="+encodeURIComponent(sheetUrls[disciplina]);
+      const res=await fetch(proxyUrl);
+      const text=await res.text();
+      dadosCache[disciplina]=Papa.parse(text,{header:true,skipEmptyLines:true}).data;
+      localStorage.setItem(cacheKey, JSON.stringify(dadosCache[disciplina]));
+      localStorage.setItem(cacheTimeKey, now);
+      showLoading(false);
+      searchInput.disabled=false;
+      onSearch();
+    }catch(err){
+      console.error(err);
+      showLoading(false);
+      cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
     }
   }
 
-  searchInput.addEventListener('input', () => {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(onSearch, debounceDelay);
+  // Eventos
+  searchInput.addEventListener('input', onSearch);
+
+  document.querySelectorAll(".disciplina-link").forEach(link=>{
+    link.addEventListener("click", async e=>{
+      e.preventDefault();
+      disciplinaAtual=e.target.dataset.disciplina;
+      filtrosSelecionados=[];
+      document.querySelectorAll(".disciplina-link").forEach(l=>l.parentElement.classList.remove("active"));
+      e.target.parentElement.classList.add("active");
+      await loadData(disciplinaAtual);
+    });
   });
 
-  await loadData();
+  btnFiltro.addEventListener("click", ()=>new bootstrap.Modal(document.getElementById('filtroModal')).show());
 
+  filtroTagsContainer.querySelectorAll('.tag-filtro').forEach(tag=>{
+    tag.addEventListener('click',()=>{ tag.classList.toggle('selected'); });
+  });
+
+  document.getElementById('aplicarFiltro').addEventListener('click', ()=>{
+    filtrosSelecionados = Array.from(filtroTagsContainer.querySelectorAll('.tag-filtro.selected')).map(t=>t.dataset.value);
+    onSearch();
+    bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide();
+  });
+
+  await loadData(disciplinaAtual);
 });
 </script>
-
 </body>
 </html>
