@@ -230,15 +230,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function loadData(disciplina){
-    if(dadosCache[disciplina]){ if(disciplina==="eletrica") renderFiltrosEletrica(dadosCache[disciplina]); onSearch(); return; }
+    if(dadosCache[disciplina]){
+      if(disciplina==="eletrica") renderFiltrosEletrica(dadosCache[disciplina]);
+      else filtroRapido.style.display="none";
+      onSearch();
+      return;
+    }
+
     showLoading();
     searchInput.disabled=true;
 
+    // 🔹 Ajuste de estilo dinâmico conforme a disciplina
     if(disciplina==='instrumentacao'){
-      navbar.style.backgroundColor='#fff'; navbar.classList.remove('navbar-dark'); logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp"; links.forEach(l=>l.style.color='#009739');
+      navbar.style.backgroundColor='#fff';
+      navbar.classList.remove('navbar-dark');
+      navbar.classList.add('navbar-light');
+      logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
+      links.forEach(l=>l.style.color='#009739');
       filtroRapido.style.display="none";
     } else {
-      navbar.style.backgroundColor='#003057'; navbar.classList.add('navbar-dark'); logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png"; links.forEach(l=>l.style.color='#fff');
+      navbar.style.backgroundColor='#003057';
+      navbar.classList.remove('navbar-light');
+      navbar.classList.add('navbar-dark');
+      logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
+      links.forEach(l=>l.style.color='#fff');
     }
 
     try {
@@ -246,11 +261,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       if(!res.ok) throw new Error('Erro HTTP '+res.status);
       const text = await res.text();
       dadosCache[disciplina] = Papa.parse(text,{header:true,skipEmptyLines:true}).data;
-      hideLoading(); searchInput.disabled=false;
+      hideLoading();
+      searchInput.disabled=false;
+
       if(disciplina==="eletrica") renderFiltrosEletrica(dadosCache[disciplina]);
+      else filtroRapido.style.display="none";
+
       onSearch();
-    } catch(err){ hideLoading(); cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>'; console.error(err); }
+    } catch(err){
+      hideLoading();
+      cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
+      console.error(err);
+    }
   }
+
 
   // Eventos
   searchInput.addEventListener('input', ()=>{ clearTimeout(debounceTimeout); debounceTimeout=setTimeout(onSearch,300); });
