@@ -15,7 +15,7 @@
 .navbar-nav .nav-link { margin-left: 1.5rem; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: color 0.3s; }
 .navbar-nav .nav-item.active .nav-link { font-weight: 700; }
 
-/* Sobrescrever o navbar-toggler-icon para fundo branco em navbar escura */
+/* Toggler branco */
 .navbar-dark .navbar-toggler-icon {
     background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba%28255,255,255,1%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
 }
@@ -28,17 +28,6 @@
 /* Cards */
 .card-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
 .card-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-
-/* Filtro elétrico tags */
-.tag-filtro { display:inline-block; margin:4px; padding:6px 14px; border-radius:20px; border:1px solid #003057; cursor:pointer; transition: all 0.2s; font-size:0.9rem; user-select:none; }
-.tag-filtro:hover { background:#e6f0ff; }
-.tag-filtro.selected { background:#003057; color:#fff; font-weight:600; }
-
-/* Modal body */
-.modal-body { max-height:350px; overflow-y:auto; text-align:center; }
-
-/* Modal detalhes */
-#modalDetails li { font-size:0.95rem; }
 
 /* Popup loading */
 #loadingPopup {
@@ -84,7 +73,6 @@
   <h1>ERCP - Pesquisa Instantânea</h1>
   <div class="search-box">
     <input id="searchInput" class="form-control" placeholder="Digite pelo menos 4 caracteres..." disabled>
-    <button id="btnFiltro" class="btn btn-outline-primary d-none">Filtro</button>
   </div>
   <div id="cardsContainer" class="row"></div>
 </div>
@@ -99,31 +87,7 @@
       </div>
       <div class="modal-body"><ul class="list-group" id="modalDetails"></ul></div>
       <div class="modal-footer">
-        <a id="downloadBtn" href="#" target="_blank" class="btn btn-success">Download</a>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Filtro -->
-<div class="modal fade" id="filtroModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Filtrar por área</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="filtroTagsContainer">
-        <span class="tag-filtro" data-value="Caldeira de Recuperação">Caldeira de Recuperação</span>
-        <span class="tag-filtro" data-value="ETAC">ETAC</span>
-        <span class="tag-filtro" data-value="Central elétrica">Central elétrica</span>
-        <span class="tag-filtro" data-value="ETA">ETA</span>
-        <span class="tag-filtro" data-value="ETE">ETE</span>
-        <span class="tag-filtro" data-value="CAE">CAE</span>
-      </div>
-      <div class="modal-footer">
-        <button id="aplicarFiltro" class="btn btn-primary">Aplicar</button>
       </div>
     </div>
   </div>
@@ -143,40 +107,33 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const searchInput = document.getElementById('searchInput');
   const cardsContainer = document.getElementById('cardsContainer');
-  const btnFiltro = document.getElementById('btnFiltro');
   const navbar = document.querySelector('.navbar');
   const links = document.querySelectorAll('.navbar-nav .nav-link');
   const logo = document.getElementById('navbarLogo');
   const modalDetails = document.getElementById('modalDetails');
   const infoModalLabel = document.getElementById('infoModalLabel');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const filtroTagsContainer = document.getElementById('filtroTagsContainer');
   const loadingPopup = document.getElementById('loadingPopup');
   const loadingText = document.getElementById('loadingText');
 
   let dadosCache = { instrumentacao: null, eletrica: null };
   let disciplinaAtual = "instrumentacao";
-  let filtrosSelecionados = [];
   let debounceTimeout = null;
 
   const sheetUrls = {
     instrumentacao: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
-    eletrica: "URL_PLANILHA_ELETRICA"
+    eletrica: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQB7VKBUBxLPr-cdvKE5TdIXxfTE0d-RsIT8RwoNWlEUHb-SeRTlOYMoHUVaK1veXp4vFZb58ONj0ah/pub?gid=0&single=true&output=csv"
   };
 
-  function showLoading(msg="Carregando dados..."){
-    loadingText.textContent = msg;
-    loadingPopup.style.display='flex';
-  }
-
-  function hideLoading(){
-    loadingPopup.style.display='none';
-  }
+  function showLoading(msg="Carregando dados..."){ loadingText.textContent = msg; loadingPopup.style.display='flex'; }
+  function hideLoading(){ loadingPopup.style.display='none'; }
 
   function showModal(item){
-    infoModalLabel.textContent = `${item['Malha']}`;
     modalDetails.innerHTML='';
-    ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'].forEach(k=>{
+    const keys = disciplinaAtual==="instrumentacao" ?
+      ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'] :
+      ['TAG DO ACIONAMENTO','PAINEL','CCM/PI','GAVETA DO CCM','QD','GAVETA DO QD','NÚMERO','ÁREA'];
+    infoModalLabel.textContent = disciplinaAtual==="instrumentacao" ? item['Malha'] : item['TAG DO ACIONAMENTO'];
+    keys.forEach(k=>{
       if(item[k]){
         const li=document.createElement('li');
         li.className='list-group-item';
@@ -184,10 +141,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalDetails.appendChild(li);
       }
     });
-    const obsLink=item['Observação']?.trim();
-    if(obsLink && obsLink.startsWith('http')){
-      downloadBtn.href=obsLink; downloadBtn.style.display='inline-block';
-    } else { downloadBtn.href='#'; downloadBtn.style.display='none'; }
     new bootstrap.Modal(document.getElementById('infoModal')).show();
   }
 
@@ -196,7 +149,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     col.className='col-md-4 mb-3';
     const card=document.createElement('div');
     card.className='card card-item p-2';
-    card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
+    if(disciplinaAtual==="instrumentacao"){
+      card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
+    } else {
+      card.innerHTML=`<h5>${item['TAG DO ACIONAMENTO']}</h5><p><strong>Painel:</strong> ${item['PAINEL']||''}</p>`;
+    }
     card.addEventListener("click",()=>showModal(item));
     col.appendChild(card);
     return col;
@@ -215,9 +172,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lq=q.toLowerCase();
     const data=dadosCache[disciplinaAtual]||[];
     return data.filter(item=>{
-      const matchTexto=!q||item['Malha']?.toLowerCase().includes(lq)||item['Remota - ERCP']?.toLowerCase().includes(lq)||(item['Localização']||'').toLowerCase().includes(lq);
-      const matchFiltro=disciplinaAtual!=='eletrica'||filtrosSelecionados.length===0||filtrosSelecionados.some(f=>(item['Localização']||'').includes(f));
-      return matchTexto&&matchFiltro;
+      if(disciplinaAtual==="instrumentacao"){
+        return item['Malha']?.toLowerCase().includes(lq) ||
+               item['Remota - ERCP']?.toLowerCase().includes(lq) ||
+               (item['Localização']||'').toLowerCase().includes(lq);
+      } else {
+        return item['TAG DO ACIONAMENTO']?.toLowerCase().includes(lq) ||
+               item['PAINEL']?.toLowerCase().includes(lq) ||
+               (item['ÁREA']||'').toLowerCase().includes(lq);
+      }
     });
   }
 
@@ -231,25 +194,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function loadData(disciplina){
-    if(dadosCache[disciplina]) return; // só carrega se não houver cache
-
-    showLoading();
-    searchInput.disabled=true;
-    btnFiltro.classList.add('d-none');
-
-    if(disciplina==='instrumentacao'){
-      navbar.style.backgroundColor='#fff';
-      navbar.classList.remove('navbar-dark');
-      logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
-      links.forEach(l=>l.style.color='#009739');
-    } else {
-      navbar.style.backgroundColor='#003057';
-      navbar.classList.add('navbar-dark');
-      logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
-      links.forEach(l=>l.style.color='#fff');
-      btnFiltro.classList.remove('d-none');
-    }
-
+    if(dadosCache[disciplina]){ onSearch(); return; }
+    showLoading(); searchInput.disabled=true;
     try {
       const res = await fetch(sheetUrls[disciplina]);
       if(!res.ok) throw new Error('Erro HTTP '+res.status);
@@ -260,12 +206,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       onSearch();
     } catch(err){
       hideLoading();
-      cardsContainer.innerHTML = '<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
+      cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
       console.error(err);
     }
   }
 
-  // Eventos
   searchInput.addEventListener('input', ()=>{
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(onSearch, 300);
@@ -275,23 +220,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     link.addEventListener("click", async e=>{
       e.preventDefault();
       disciplinaAtual=e.target.dataset.disciplina;
-      filtrosSelecionados=[];
       document.querySelectorAll(".disciplina-link").forEach(l=>l.parentElement.classList.remove("active"));
       e.target.parentElement.classList.add("active");
+
+      if(disciplinaAtual==='instrumentacao'){
+        navbar.style.backgroundColor='#fff';
+        navbar.classList.remove('navbar-dark');
+        logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
+        links.forEach(l=>l.style.color='#009739');
+      } else {
+        navbar.style.backgroundColor='#003057';
+        navbar.classList.add('navbar-dark');
+        logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
+        links.forEach(l=>l.style.color='#fff');
+      }
+
       await loadData(disciplinaAtual);
     });
-  });
-
-  btnFiltro.addEventListener("click", ()=>new bootstrap.Modal(document.getElementById('filtroModal')).show());
-
-  filtroTagsContainer.querySelectorAll('.tag-filtro').forEach(tag=>{
-    tag.addEventListener('click',()=>{ tag.classList.toggle('selected'); });
-  });
-
-  document.getElementById('aplicarFiltro').addEventListener('click', ()=>{
-    filtrosSelecionados = Array.from(filtroTagsContainer.querySelectorAll('.tag-filtro.selected')).map(t=>t.dataset.value);
-    onSearch();
-    bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide();
   });
 
   await loadData(disciplinaAtual);
