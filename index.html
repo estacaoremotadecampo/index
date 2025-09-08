@@ -205,13 +205,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  function onSearch(){
-    const q=searchInput.value.trim();
-    if(disciplinaAtual==='instrumentacao' && q.length<4){
-      cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>'; return;
-    }
-    renderCards(filterData(q));
+function onSearch(){
+  const q = searchInput.value.trim();
+
+  if(disciplinaAtual === 'eletrica' && q.length < 3){
+    cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 3 caracteres.</div>';
+    return;
   }
+
+  if(disciplinaAtual === 'instrumentacao' && q.length < 4){
+    cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
+    return;
+  }
+
+  renderCards(filterData(q, disciplinaAtual), disciplinaAtual);
+}
 
   function renderFiltrosEletrica(dados){
     filtroRapido.innerHTML="";
@@ -285,3 +293,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 </script>
 </body>
 </html>
+
