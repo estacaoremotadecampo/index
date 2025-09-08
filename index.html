@@ -208,18 +208,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 function onSearch(){
   const q = searchInput.value.trim();
 
-  if(disciplinaAtual === 'eletrica' && q.length < 3){
-    cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 3 caracteres.</div>';
-    return;
-  }
-
   if(disciplinaAtual === 'instrumentacao' && q.length < 4){
     cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
     return;
   }
 
-  renderCards(filterData(q, disciplinaAtual), disciplinaAtual);
+  if(disciplinaAtual === 'eletrica' && q.length > 0 && q.length < 3){
+    cardsContainer.innerHTML = '<div class="col-12 text-center">Digite pelo menos 3 caracteres ou use o filtro.</div>';
+    return;
+  }
+
+  renderCards(filterData(q), disciplinaAtual);
 }
+
 
   function renderFiltrosEletrica(dados){
     filtroRapido.innerHTML="";
@@ -293,6 +294,7 @@ function onSearch(){
 </script>
 </body>
 </html>
+
 
 
 
