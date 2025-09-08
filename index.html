@@ -29,7 +29,8 @@
 .card-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
 .card-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 
-/* Filtro */
+/* Filtro rápido */
+#filtroRapido { margin-bottom: 15px; display:none; flex-wrap:wrap; justify-content:center; }
 .tag-filtro { display:inline-block; margin:4px; padding:6px 14px; border-radius:20px; border:1px solid #003057; cursor:pointer; transition: all 0.2s; font-size:0.9rem; user-select:none; }
 .tag-filtro:hover { background:#e6f0ff; }
 .tag-filtro.selected { background:#003057; color:#fff; font-weight:600; }
@@ -82,8 +83,9 @@
   <h1>ERCP - Pesquisa Instantânea</h1>
   <div class="search-box">
     <input id="searchInput" class="form-control" placeholder="Digite pelo menos 4 caracteres..." disabled>
-    <button id="btnFiltro" class="btn btn-outline-primary d-none">Filtro</button>
   </div>
+  <!-- Filtros rápidos (somente para elétrica) -->
+  <div id="filtroRapido"></div>
   <div id="cardsContainer" class="row"></div>
 </div>
 
@@ -104,25 +106,6 @@
   </div>
 </div>
 
-<!-- Modal Filtro -->
-<div class="modal fade" id="filtroModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Filtrar por área</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body" id="filtroTagsContainer">
-        <span class="tag-filtro" data-value="Caldeira">Caldeira</span>
-        <span class="tag-filtro" data-value="ETAC">ETAC</span>
-      </div>
-      <div class="modal-footer">
-        <button id="aplicarFiltro" class="btn btn-primary">Aplicar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Loading Popup -->
 <div id="loadingPopup">
   <div class="spinner-border text-light" role="status"></div>
@@ -137,16 +120,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const searchInput = document.getElementById('searchInput');
   const cardsContainer = document.getElementById('cardsContainer');
-  const btnFiltro = document.getElementById('btnFiltro');
   const navbar = document.querySelector('.navbar');
   const links = document.querySelectorAll('.navbar-nav .nav-link');
   const logo = document.getElementById('navbarLogo');
   const modalDetails = document.getElementById('modalDetails');
   const infoModalLabel = document.getElementById('infoModalLabel');
   const downloadBtn = document.getElementById('downloadBtn');
-  const filtroTagsContainer = document.getElementById('filtroTagsContainer');
   const loadingPopup = document.getElementById('loadingPopup');
   const loadingText = document.getElementById('loadingText');
+  const filtroRapido = document.getElementById('filtroRapido');
 
   let dadosCache = { instrumentacao: null, eletrica: null };
   let disciplinaAtual = "instrumentacao";
@@ -158,11 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     eletrica: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQB7VKBUBxLPr-cdvKE5TdIXxfTE0d-RsIT8RwoNWlEUHb-SeRTlOYMoHUVaK1veXp4vFZb58ONj0ah/pub?gid=0&single=true&output=csv"
   };
 
-  function showLoading(msg="Carregando dados..."){
-    loadingText.textContent = msg;
-    loadingPopup.style.display='flex';
-  }
-
+  function showLoading(msg="Carregando dados..."){ loadingText.textContent = msg; loadingPopup.style.display='flex'; }
   function hideLoading(){ loadingPopup.style.display='none'; }
 
   function showModal(item){
@@ -171,10 +149,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       infoModalLabel.textContent = `${item['Malha']}`;
       ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'].forEach(k=>{
         if(item[k]){
-          const li=document.createElement('li');
-          li.className='list-group-item';
-          li.innerHTML=`<strong>${k}:</strong> ${item[k]}`;
-          modalDetails.appendChild(li);
+          const li=document.createElement('li'); li.className='list-group-item';
+          li.innerHTML=`<strong>${k}:</strong> ${item[k]}`; modalDetails.appendChild(li);
         }
       });
       const obsLink=item['Observação']?.trim();
@@ -184,10 +160,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       infoModalLabel.textContent = `${item['TAG DO ACIONAMENTO']}`;
       ['TAG DO ACIONAMENTO','PAINEL','CCM/PI','GAVETA DO CCM','QD','GAVETA DO QD','NÚMERO','ÁREA'].forEach(k=>{
         if(item[k]){
-          const li=document.createElement('li');
-          li.className='list-group-item';
-          li.innerHTML=`<strong>${k}:</strong> ${item[k]}`;
-          modalDetails.appendChild(li);
+          const li=document.createElement('li'); li.className='list-group-item';
+          li.innerHTML=`<strong>${k}:</strong> ${item[k]}`; modalDetails.appendChild(li);
         }
       });
       const obsLink=item['Observação']?.trim();
@@ -226,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         matchTexto=!q||item['TAG DO ACIONAMENTO']?.toLowerCase().includes(lq)||(item['PAINEL']||'').toLowerCase().includes(lq)||(item['ÁREA']||'').toLowerCase().includes(lq);
       }
-      const matchFiltro=disciplinaAtual!=='eletrica'||filtrosSelecionados.length===0||filtrosSelecionados.some(f=>(item['ÁREA']||'').includes(f));
+      const matchFiltro=disciplinaAtual!=='eletrica'||filtrosSelecionados.length===0||filtrosSelecionados.includes(item['ÁREA']);
       return matchTexto&&matchFiltro;
     });
   }
@@ -239,15 +213,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCards(filterData(q));
   }
 
+  function renderFiltrosEletrica(dados){
+    filtroRapido.innerHTML="";
+    const areas=[...new Set(dados.map(i=>i['ÁREA']).filter(a=>a&&a.trim()!==''))];
+    areas.forEach(area=>{
+      const tag=document.createElement("span");
+      tag.className="tag-filtro"; tag.dataset.value=area; tag.textContent=area;
+      tag.addEventListener("click",()=>{
+        tag.classList.toggle("selected");
+        filtrosSelecionados=Array.from(filtroRapido.querySelectorAll(".tag-filtro.selected")).map(t=>t.dataset.value);
+        onSearch();
+      });
+      filtroRapido.appendChild(tag);
+    });
+    filtroRapido.style.display="flex";
+  }
+
   async function loadData(disciplina){
-    if(dadosCache[disciplina]) return;
+    if(dadosCache[disciplina]){ if(disciplina==="eletrica") renderFiltrosEletrica(dadosCache[disciplina]); onSearch(); return; }
     showLoading();
-    searchInput.disabled=true; btnFiltro.classList.add('d-none');
+    searchInput.disabled=true;
 
     if(disciplina==='instrumentacao'){
       navbar.style.backgroundColor='#fff'; navbar.classList.remove('navbar-dark'); logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp"; links.forEach(l=>l.style.color='#009739');
+      filtroRapido.style.display="none";
     } else {
-      navbar.style.backgroundColor='#003057'; navbar.classList.add('navbar-dark'); logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png"; links.forEach(l=>l.style.color='#fff'); btnFiltro.classList.remove('d-none');
+      navbar.style.backgroundColor='#003057'; navbar.classList.add('navbar-dark'); logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png"; links.forEach(l=>l.style.color='#fff');
     }
 
     try {
@@ -255,19 +246,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       if(!res.ok) throw new Error('Erro HTTP '+res.status);
       const text = await res.text();
       dadosCache[disciplina] = Papa.parse(text,{header:true,skipEmptyLines:true}).data;
-      hideLoading(); searchInput.disabled=false; onSearch();
+      hideLoading(); searchInput.disabled=false;
+      if(disciplina==="eletrica") renderFiltrosEletrica(dadosCache[disciplina]);
+      onSearch();
     } catch(err){ hideLoading(); cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>'; console.error(err); }
   }
 
+  // Eventos
   searchInput.addEventListener('input', ()=>{ clearTimeout(debounceTimeout); debounceTimeout=setTimeout(onSearch,300); });
-
   document.querySelectorAll(".disciplina-link").forEach(link=>{ link.addEventListener("click", async e=>{ e.preventDefault(); disciplinaAtual=e.target.dataset.disciplina; filtrosSelecionados=[]; document.querySelectorAll(".disciplina-link").forEach(l=>l.parentElement.classList.remove("active")); e.target.parentElement.classList.add("active"); await loadData(disciplinaAtual); }); });
-
-  btnFiltro.addEventListener("click", ()=>new bootstrap.Modal(document.getElementById('filtroModal')).show());
-
-  filtroTagsContainer.querySelectorAll('.tag-filtro').forEach(tag=>{ tag.addEventListener('click',()=>{ tag.classList.toggle('selected'); }); });
-
-  document.getElementById('aplicarFiltro').addEventListener('click', ()=>{ filtrosSelecionados=Array.from(filtroTagsContainer.querySelectorAll('.tag-filtro.selected')).map(t=>t.dataset.value); onSearch(); bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide(); });
 
   await loadData(disciplinaAtual);
 });
