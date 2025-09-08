@@ -1,243 +1,200 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ERCP - Pesquisa Instantânea</title>
-
-<!-- Bootstrap CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<style>
-/* Navbar */
-.navbar { padding: 0.8rem 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: background-color 0.3s; }
-.navbar-brand img { height: 42px; }
-.navbar-nav .nav-link { margin-left: 1.5rem; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: color 0.3s; }
-.navbar-nav .nav-item.active .nav-link { font-weight: 700; }
-
-/* Toggler branco */
-.navbar-dark .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba%28255,255,255,1%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
-}
-
-/* Conteúdo */
-.content { margin-top: 100px; text-align: center; }
-.search-box { max-width: 600px; margin: 0 auto 20px auto; display:flex; gap:10px; }
-.search-box input { flex:1; border: 2px solid #009739; border-radius: 8px; padding: 10px 15px; }
-
-/* Cards */
-.card-item { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-.card-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-
-/* Popup loading */
-#loadingPopup {
-  position: fixed;
-  top:0; left:0; right:0; bottom:0;
-  background: rgba(0,0,0,0.5);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:1055;
-  flex-direction: column;
-  color:#fff;
-  font-size:1.2rem;
-  font-weight:500;
-  display:none;
-}
-#loadingPopup .spinner-border { width:3rem; height:3rem; margin-bottom:10px; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrumentação & Elétrica</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { background:#f8f9fa; }
+    .card-item { cursor:pointer; transition:transform .2s; }
+    .card-item:hover { transform:scale(1.03); }
+    /* Popup de loading */
+    #loadingPopup {
+      display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.6); z-index:2000;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #loadingPopup .content {
+      background:#222; color:#fff; padding:20px 40px;
+      border-radius:10px; text-align:center;
+      box-shadow:0 0 20px rgba(0,0,0,0.8);
+    }
+    .tag-filtro {
+      display:inline-block; margin:5px; padding:8px 15px; border-radius:20px;
+      background:#f1f1f1; cursor:pointer; transition:.2s;
+    }
+    .tag-filtro.selected { background:#0d6efd; color:#fff; }
+  </style>
 </head>
-<body class="p-4">
-
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg fixed-top">
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
   <div class="container-fluid">
-    <a class="navbar-brand d-flex align-items-center" href="#">
-      <img id="navbarLogo" src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp" alt="Logo">
+    <a class="navbar-brand" href="#">
+      <img id="logoNav" src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png" height="40">
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-      <ul class="navbar-nav">
-        <li class="nav-item active"><a class="nav-link disciplina-link" href="#" data-disciplina="instrumentacao">Instrumentação</a></li>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link active disciplina-link" href="#" data-disciplina="instrumentacao">Instrumentação</a></li>
         <li class="nav-item"><a class="nav-link disciplina-link" href="#" data-disciplina="eletrica">Elétrica</a></li>
       </ul>
+      <div class="d-flex">
+        <input id="searchInput" class="form-control me-2" type="search" placeholder="Pesquisar..." disabled>
+        <button id="btnFiltro" class="btn btn-outline-light" style="display:none;">Filtros</button>
+      </div>
     </div>
   </div>
 </nav>
 
-<!-- Conteúdo -->
-<div class="content container">
-  <img src="https://raw.githubusercontent.com/estacaoremotadecampo/index/refs/heads/main/gwregister.png" alt="Logo" class="logo-header">
-  <h1>ERCP - Pesquisa Instantânea</h1>
-  <div class="search-box">
-    <input id="searchInput" class="form-control" placeholder="Digite pelo menos 4 caracteres..." disabled>
-  </div>
-  <div id="cardsContainer" class="row"></div>
+<div class="container mt-4">
+  <div class="row" id="cardsContainer"></div>
 </div>
 
-<!-- Modal Info -->
+<!-- Modal Detalhes -->
 <div class="modal fade" id="infoModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="infoModalLabel">Detalhes</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body"><ul class="list-group" id="modalDetails"></ul></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <a id="downloadBtn" class="btn btn-primary" href="#" target="_blank" style="display:none;">Baixar Diagrama</a>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Loading Popup -->
-<div id="loadingPopup">
-  <div class="spinner-border text-light" role="status"></div>
-  <div id="loadingText">Carregando dados...</div>
+<!-- Modal Filtros Elétrica -->
+<div class="modal fade" id="filtroModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Filtrar por Área</h5></div>
+      <div class="modal-body" id="filtroTagsContainer">
+        <span class="tag-filtro" data-value="Caldeira de Recuperação">Caldeira de Recuperação</span>
+        <span class="tag-filtro" data-value="ETAC">ETAC</span>
+        <span class="tag-filtro" data-value="Central elétrica">Central elétrica</span>
+        <span class="tag-filtro" data-value="ETA">ETA</span>
+        <span class="tag-filtro" data-value="ETE">ETE</span>
+        <span class="tag-filtro" data-value="CAE">CAE</span>
+      </div>
+      <div class="modal-footer">
+        <button id="aplicarFiltro" class="btn btn-primary">Aplicar</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Scripts -->
+<!-- Popup de Loading -->
+<div id="loadingPopup"><div class="content"><div class="spinner-border text-light mb-2"></div><div id="loadingText">Carregando dados...</div></div></div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
-  const searchInput = document.getElementById('searchInput');
-  const cardsContainer = document.getElementById('cardsContainer');
-  const navbar = document.querySelector('.navbar');
-  const links = document.querySelectorAll('.navbar-nav .nav-link');
-  const logo = document.getElementById('navbarLogo');
-  const modalDetails = document.getElementById('modalDetails');
-  const infoModalLabel = document.getElementById('infoModalLabel');
-  const loadingPopup = document.getElementById('loadingPopup');
-  const loadingText = document.getElementById('loadingText');
+document.addEventListener("DOMContentLoaded", async ()=>{
+  const searchInput=document.getElementById("searchInput");
+  const cardsContainer=document.getElementById("cardsContainer");
+  const modalDetails=document.getElementById("modalDetails");
+  const infoModalLabel=document.getElementById("infoModalLabel");
+  const downloadBtn=document.getElementById("downloadBtn");
+  const btnFiltro=document.getElementById("btnFiltro");
+  const filtroTagsContainer=document.getElementById("filtroTagsContainer");
+  const loadingPopup=document.getElementById("loadingPopup");
+  const loadingText=document.getElementById("loadingText");
 
-  let dadosCache = { instrumentacao: null, eletrica: null };
-  let disciplinaAtual = "instrumentacao";
-  let debounceTimeout = null;
+  let dataCache={}, disciplinaAtual="instrumentacao", filtrosSelecionados=[];
+  let debounceTimeout=null;
 
-  const sheetUrls = {
-    instrumentacao: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
-    eletrica: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQB7VKBUBxLPr-cdvKE5TdIXxfTE0d-RsIT8RwoNWlEUHb-SeRTlOYMoHUVaK1veXp4vFZb58ONj0ah/pub?gid=0&single=true&output=csv"
+  const urls={
+    instrumentacao:"https://docs.google.com/spreadsheets/d/e/2PACX-1vR9o4Q_wrHuNAlHUMmdrzGStmebFvVsSXI28Mta-lG74tMCzJY4Pvx3S8s3Hqhn1A/pub?gid=304106538&single=true&output=csv",
+    eletrica:"https://docs.google.com/spreadsheets/d/e/2PACX-1vQB7VKBUBxLPr-cdvKE5TdIXxfTE0d-RsIT8RwoNWlEUHb-SeRTlOYMoHUVaK1veXp4vFZb58ONj0ah/pub?gid=0&single=true&output=csv"
   };
 
-  function showLoading(msg="Carregando dados..."){ loadingText.textContent = msg; loadingPopup.style.display='flex'; }
-  function hideLoading(){ loadingPopup.style.display='none'; }
+  function showLoading(){loadingPopup.style.display="flex";}
+  function hideLoading(){loadingPopup.style.display="none";}
 
-  function showModal(item){
-    modalDetails.innerHTML='';
-    const keys = disciplinaAtual==="instrumentacao" ?
-      ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'] :
-      ['TAG DO ACIONAMENTO','PAINEL','CCM/PI','GAVETA DO CCM','QD','GAVETA DO QD','NÚMERO','ÁREA'];
-    infoModalLabel.textContent = disciplinaAtual==="instrumentacao" ? item['Malha'] : item['TAG DO ACIONAMENTO'];
-    keys.forEach(k=>{
-      if(item[k]){
-        const li=document.createElement('li');
-        li.className='list-group-item';
-        li.innerHTML=`<strong>${k}:</strong> ${item[k]}`;
-        modalDetails.appendChild(li);
-      }
-    });
+  function createCard(item,disciplina){
+    const col=document.createElement("div"); col.className="col-md-4 mb-3";
+    const card=document.createElement("div"); card.className="card card-item p-2";
+    if(disciplina==="instrumentacao"){
+      card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']||''}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
+    }else{
+      card.innerHTML=`<h5>${item['TAG DO ACIONAMENTO']||''}</h5><p><strong>Painel:</strong> ${item['PAINEL']||''}</p>`;
+    }
+    card.addEventListener("click",()=>showModal(item,disciplina));
+    col.appendChild(card); return col;
+  }
+
+  function showModal(item,disciplina){
+    modalDetails.innerHTML=""; downloadBtn.style.display="none";
+    if(disciplina==="instrumentacao"){
+      infoModalLabel.textContent=`Malha: ${item['Malha']}`;
+      ['Malha','Remota - ERCP','Localização','Rede','IBC','Cartão','Canal','Tipo do Cartão'].forEach(k=>{
+        const li=document.createElement("li"); li.className="list-group-item"; li.innerHTML=`<strong>${k}:</strong> ${item[k]||''}`; modalDetails.appendChild(li);
+      });
+      if(item['Observação']?.startsWith("http")){downloadBtn.href=item['Observação'];downloadBtn.style.display="inline-block";}
+    }else{
+      infoModalLabel.textContent=`TAG: ${item['TAG DO ACIONAMENTO']}`;
+      ['TAG DO ACIONAMENTO','PAINEL','CCM/PI','GAVETA DO CCM','QD','GAVETA DO QD','NÚMERO','ÁREA'].forEach(k=>{
+        const li=document.createElement("li"); li.className="list-group-item"; li.innerHTML=`<strong>${k}:</strong> ${item[k]||''}`; modalDetails.appendChild(li);
+      });
+      if(item['Observação']?.startsWith("http")){downloadBtn.href=item['Observação'];downloadBtn.style.display="inline-block";}
+    }
     new bootstrap.Modal(document.getElementById('infoModal')).show();
   }
 
-  function createCard(item){
-    const col=document.createElement('div');
-    col.className='col-md-4 mb-3';
-    const card=document.createElement('div');
-    card.className='card card-item p-2';
-    if(disciplinaAtual==="instrumentacao"){
-      card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
-    } else {
-      card.innerHTML=`<h5>${item['TAG DO ACIONAMENTO']}</h5><p><strong>Painel:</strong> ${item['PAINEL']||''}</p>`;
-    }
-    card.addEventListener("click",()=>showModal(item));
-    col.appendChild(card);
-    return col;
+  function renderCards(arr,disciplina){
+    cardsContainer.innerHTML=""; if(!arr.length){cardsContainer.innerHTML='<div class="col-12 text-center">Nenhum resultado.</div>';return;}
+    arr.forEach(it=>cardsContainer.appendChild(createCard(it,disciplina)));
   }
 
-  function renderCards(arr){
-    cardsContainer.innerHTML='';
-    if(!arr.length){
-      cardsContainer.innerHTML='<div class="col-12 text-center">Nenhum resultado encontrado.</div>';
-      return;
-    }
-    arr.forEach(i=>cardsContainer.appendChild(createCard(i)));
-  }
-
-  function filterData(q){
-    const lq=q.toLowerCase();
-    const data=dadosCache[disciplinaAtual]||[];
-    return data.filter(item=>{
-      if(disciplinaAtual==="instrumentacao"){
-        return item['Malha']?.toLowerCase().includes(lq) ||
-               item['Remota - ERCP']?.toLowerCase().includes(lq) ||
-               (item['Localização']||'').toLowerCase().includes(lq);
-      } else {
-        return item['TAG DO ACIONAMENTO']?.toLowerCase().includes(lq) ||
-               item['PAINEL']?.toLowerCase().includes(lq) ||
-               (item['ÁREA']||'').toLowerCase().includes(lq);
+  function filterData(q,disciplina){
+    q=q.toLowerCase();
+    return dataCache[disciplina].filter(item=>{
+      if(disciplina==="instrumentacao"){
+        return item['Malha']?.toLowerCase().includes(q)||item['Remota - ERCP']?.toLowerCase().includes(q)||item['Localização']?.toLowerCase().includes(q);
+      }else{
+        let ok=item['TAG DO ACIONAMENTO']?.toLowerCase().includes(q)||item['PAINEL']?.toLowerCase().includes(q);
+        if(filtrosSelecionados.length){ok=ok&&filtrosSelecionados.includes(item['ÁREA']);}
+        return ok;
       }
     });
   }
 
-  function onSearch(){
-    const q=searchInput.value.trim();
-    if(disciplinaAtual==='instrumentacao' && q.length<4){
-      cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 4 caracteres.</div>';
-      return;
-    }
-    renderCards(filterData(q));
-  }
+  function onSearch(){const q=searchInput.value.trim(); if(q.length<3){cardsContainer.innerHTML='<div class="col-12 text-center">Digite pelo menos 3 caracteres.</div>';return;} renderCards(filterData(q,disciplinaAtual),disciplinaAtual);}
 
   async function loadData(disciplina){
-    if(dadosCache[disciplina]){ onSearch(); return; }
-    showLoading(); searchInput.disabled=true;
-    try {
-      const res = await fetch(sheetUrls[disciplina]);
-      if(!res.ok) throw new Error('Erro HTTP '+res.status);
-      const text = await res.text();
-      dadosCache[disciplina] = Papa.parse(text, {header:true,skipEmptyLines:true}).data;
-      hideLoading();
-      searchInput.disabled=false;
-      onSearch();
-    } catch(err){
-      hideLoading();
-      cardsContainer.innerHTML='<div class="col-12 text-center text-danger">Erro ao carregar dados.</div>';
-      console.error(err);
-    }
+    const cacheKey="cache_"+disciplina, today=new Date().toISOString().split("T")[0];
+    const saved=localStorage.getItem(cacheKey);
+    if(saved){const {date,data}=JSON.parse(saved); if(date===today){dataCache[disciplina]=data; searchInput.disabled=false; btnFiltro.style.display=(disciplina==='eletrica')?'inline-block':'none'; return;}}
+    showLoading();
+    try{
+      const res=await fetch("https://api.allorigins.win/raw?url="+encodeURIComponent(urls[disciplina])); const txt=await res.text();
+      const parsed=Papa.parse(txt,{header:true,skipEmptyLines:true}); dataCache[disciplina]=parsed.data;
+      localStorage.setItem(cacheKey,JSON.stringify({date:today,data:parsed.data}));
+      searchInput.disabled=false; btnFiltro.style.display=(disciplina==='eletrica')?'inline-block':'none';
+    }catch(e){cardsContainer.innerHTML='<div class="col-12 text-danger text-center">Erro ao carregar dados.</div>'; console.error(e);}
+    hideLoading();
   }
 
-  searchInput.addEventListener('input', ()=>{
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(onSearch, 300);
-  });
+  searchInput.addEventListener("input",()=>{clearTimeout(debounceTimeout); debounceTimeout=setTimeout(onSearch,300);});
 
   document.querySelectorAll(".disciplina-link").forEach(link=>{
-    link.addEventListener("click", async e=>{
-      e.preventDefault();
-      disciplinaAtual=e.target.dataset.disciplina;
-      document.querySelectorAll(".disciplina-link").forEach(l=>l.parentElement.classList.remove("active"));
-      e.target.parentElement.classList.add("active");
-
-      if(disciplinaAtual==='instrumentacao'){
-        navbar.style.backgroundColor='#fff';
-        navbar.classList.remove('navbar-dark');
-        logo.src="https://enspace.io/wp-content/uploads/2024/12/Suzano-pixel-menor.png.webp";
-        links.forEach(l=>l.style.color='#009739');
-      } else {
-        navbar.style.backgroundColor='#003057';
-        navbar.classList.add('navbar-dark');
-        logo.src="https://cdn.prod.website-files.com/6671dffa07a8cb14145637d4/668fe0daade92a516783a75e_suzano_logo.png";
-        links.forEach(l=>l.style.color='#fff');
-      }
-
+    link.addEventListener("click",async e=>{
+      e.preventDefault(); disciplinaAtual=e.target.dataset.disciplina; filtrosSelecionados=[];
+      document.querySelectorAll(".disciplina-link").forEach(l=>l.classList.remove("active")); e.target.classList.add("active");
       await loadData(disciplinaAtual);
     });
   });
+
+  btnFiltro.addEventListener("click",()=>new bootstrap.Modal(document.getElementById('filtroModal')).show());
+  filtroTagsContainer.querySelectorAll(".tag-filtro").forEach(tag=>tag.addEventListener("click",()=>tag.classList.toggle("selected")));
+  document.getElementById("aplicarFiltro").addEventListener("click",()=>{filtrosSelecionados=Array.from(filtroTagsContainer.querySelectorAll(".tag-filtro.selected")).map(t=>t.dataset.value); onSearch(); bootstrap.Modal.getInstance(document.getElementById('filtroModal')).hide();});
 
   await loadData(disciplinaAtual);
 });
