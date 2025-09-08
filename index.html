@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(disciplinaAtual==="instrumentacao"){
       card.innerHTML=`<h5>${item['Malha']}</h5><p><strong>Remota:</strong> ${item['Remota - ERCP']}<br><strong>Localização:</strong> ${item['Localização']||''}</p>`;
     } else {
-      card.innerHTML=`<h5>${item['TAG DO ACIONAMENTO']}</h5><p><strong>Painel:</strong> ${item['PAINEL']||''}<br><strong>Área:</strong> ${item['ÁREA']||''}</p>`;
+      card.innerHTML=`<h5>${item['TAG DO ACIONAMENTO']}</h5><p><strong>Painel:</strong> ${item['PAINEL']||''}<br><strong>Sala:</strong> ${item['ÁREA']||''}</p>`;
     }
     card.addEventListener("click",()=>showModal(item));
     col.appendChild(card);
@@ -293,5 +293,6 @@ function onSearch(){
 </script>
 </body>
 </html>
+
 
 
